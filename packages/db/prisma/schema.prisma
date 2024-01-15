@@ -1,0 +1,350 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  NURSE
+  PHYSITION
+  SUPPORT
+  ADDMITION
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+model User {
+  nationalId      String           @id @unique
+  phone           String           @unique
+  phoneVerified   Boolean          @default(false)
+  name            String?
+  firstName       String?
+  lastName        String?
+  password        String?
+  role            UserRole         @default(USER)
+  charge          Int              @default(0)
+  createdAt       DateTime         @default(now())
+  userProfile     UserProfile?
+  staffProfile    StaffProfile?
+  serviceRequests ServiceRequest[]
+  subscriptions   Subscription[]
+  notifications   Notification[]
+  appointments    Appointment[]    @relation(name: "staff")
+  myAppointments  Appointment[]    @relation(name: "patient")
+  payments        Payment[]
+  inventory       Inventory[]
+  ResetToken      ResetToken[]
+  LoginToken      LoginToken[]
+  onlineStatus    OnlineStatus?
+  Conversation    Conversation[]
+  Message         Message[]
+  FeedBack        FeedBack[]
+  authoredNotes   Note[]
+  notes           Note[]           @relation("patientNotes")
+  Bill            Bill[]           @relation(name: "patient")
+  staffBills      Bill[]           @relation(name: "staff")
+}
+
+model OnlineStatus {
+  userId String  @id
+  user   User    @relation(fields: [userId], references: [nationalId])
+  online Boolean @default(false)
+}
+
+model Subscription {
+  endpoint  String   @unique
+  auth      String
+  p256dh    String
+  userId    String
+  user      User     @relation(fields: [userId], references: [nationalId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ResetToken {
+  userId    String   @id
+  token     String   @unique
+  user      User     @relation(fields: [userId], references: [nationalId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LoginToken {
+  userId    String   @id
+  token     String   @unique
+  user      User     @relation(fields: [userId], references: [nationalId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  tag       String
+  seen      Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [nationalId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserProfile {
+  userId        String    @id
+  user          User      @relation(fields: [userId], references: [nationalId])
+  firstName     String?
+  lastName      String?
+  birthDate     DateTime?
+  gender        Gender    @default(MALE)
+  // past medical history
+  conditions    String
+  allergies     String
+  familyHistory String
+  socialHistory String
+  medications   String
+  surgeries     String
+  addictions    String
+}
+
+model StaffProfile {
+  userId       String    @id
+  staff        User      @relation(fields: [userId], references: [nationalId])
+  firstName    String?
+  lastName     String?
+  birthDate    DateTime?
+  avatar       String?
+  gender       Gender    @default(MALE)
+  createdAt    DateTime  @default(now())
+  title        String?
+  // current location
+  location_lat Decimal?
+  location_lng Decimal?
+  isAvailable  Boolean   @default(false)
+}
+
+enum ServiceType {
+  LAB
+  RADIOLOGY
+  PHARMACY
+  NURSE
+  PHYSITION
+  SUPPORT
+}
+
+model Service {
+  id              String           @id @default(cuid())
+  name            String
+  description     String
+  price           Int
+  type            ServiceType      @default(NURSE)
+  enabled         Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  serviceRequests ServiceRequest[]
+  billItems       BillItem[]
+}
+
+model ServiceRequest {
+  id        Int                  @id @default(autoincrement())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [nationalId])
+  serviceId String
+  service   Service              @relation(fields: [serviceId], references: [id])
+  status    ServiceRequestStatus @default(PENDING)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+}
+
+enum ServiceRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELED
+  COMPLETED
+}
+
+model Good {
+  id          String        @id @default(cuid())
+  name        String
+  description String
+  price       Int
+  staffPrice  Int?
+  priceUnit   String        @default("IQD")
+  quantity    Int           @default(0)
+  image       String?
+  longDesc    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  Inventory   Inventory[]
+  nillItems   BillItem[]
+  PackageItem PackageItem[]
+}
+
+model Package {
+  id           String        @id @default(cuid())
+  name         String
+  description  String
+  image        String?
+  longDesc     String?
+  packageItems PackageItem[]
+  BillItem     BillItem[]
+}
+
+model PackageItem {
+  id        Int      @id @default(autoincrement())
+  packageId String
+  package   Package  @relation(fields: [packageId], references: [id])
+  goodId    String
+  good      Good     @relation(fields: [goodId], references: [id])
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Inventory {
+  id        Int      @id @default(autoincrement())
+  goodId    String
+  good      Good     @relation(fields: [goodId], references: [id])
+  userId    String
+  staff     User     @relation(fields: [userId], references: [nationalId])
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([goodId, userId])
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  STARTED
+  FINISHED
+  CANCELLED
+}
+
+model Appointment {
+  id              Int               @id @default(autoincrement())
+  userId          String
+  user            User              @relation(fields: [userId], references: [nationalId], name: "patient")
+  staffId         String
+  staff           User              @relation(fields: [staffId], references: [nationalId], name: "staff")
+  dateTime        DateTime          @default(now())
+  durationMinutes Int?
+  status          AppointmentStatus @default(SCHEDULED)
+  notes           Note[]
+  note            String?
+}
+
+model FeedBack {
+  id      String @id @default(uuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [nationalId])
+  message String
+  rating  Float
+}
+
+model Note {
+  id            Int          @id @default(autoincrement())
+  appointmentId Int?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  authorId      String?
+  author        User?        @relation(fields: [authorId], references: [nationalId])
+  userId        String?
+  user          User?        @relation("patientNotes", fields: [userId], references: [nationalId])
+  content       String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  ONLINE
+}
+
+model Bill {
+  id             Int           @id @default(autoincrement())
+  userId         String
+  user           User          @relation(fields: [userId], references: [nationalId], name: "patient")
+  staffId        String
+  staff          User          @relation(fields: [staffId], references: [nationalId], name: "staff")
+  staffCharge    Int
+  invoiceNumber  String?
+  amountDue      Int
+  paidAmount     Int
+  tax            Int
+  maintenanceFee Int
+  paymentMethod  PaymentMethod
+  isPaid         Boolean       @default(false)
+  billItems      BillItem[]
+  createdAt      DateTime      @default(now())
+  Payment        Payment[]
+}
+
+enum BillItemType {
+  SERVICE
+  GOOD
+  ADDITIONAL
+}
+
+model BillItem {
+  id           Int          @id @default(autoincrement())
+  type         BillItemType @default(SERVICE)
+  label        String?
+  billId       Int
+  bill         Bill         @relation(fields: [billId], references: [id])
+  serviceId    String?
+  service      Service?     @relation(fields: [serviceId], references: [id])
+  goodId       String?
+  good         Good?        @relation(fields: [goodId], references: [id])
+  packageId    String?
+  package      Package?     @relation(fields: [packageId], references: [id])
+  pricePerUnit Int
+  quantity     Int          @default(1)
+  totalPrice   Float
+}
+
+model Payment {
+  id              Int           @id @default(autoincrement())
+  billId          Int?
+  bill            Bill?         @relation(fields: [billId], references: [id])
+  amount          Int?
+  userId          String
+  user            User          @relation(fields: [userId], references: [nationalId])
+  transactionDate DateTime
+  description     String?
+  paymentMethod   PaymentMethod
+}
+
+enum CoversationStatus {
+  OPEN
+  CLOSED
+}
+
+model Conversation {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [nationalId])
+  status    CoversationStatus
+  subject   String
+  messages  Message[]
+  createdAt DateTime          @default(now())
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [nationalId])
+  content        String
+  seen           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  Conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversationId String
+}

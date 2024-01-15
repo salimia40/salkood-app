@@ -1,0 +1,20 @@
+{
+  "name": "db",
+  "private": true,
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "types": "dist/*/**.d.ts",
+  "scripts": {
+    "prepare": "prisma generate",
+    "build": "tsc",
+    "build:watch": "tsc -w"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "prisma": "^5.7.1",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.1"
+  }
+}

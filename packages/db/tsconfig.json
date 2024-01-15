@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "baseUrl": "./",
+    "outDir": "./dist",
+    "lib": ["ESNext"],
+    "declaration": true,
+    "declarationMap": true,
+    "target": "ES2021",
+    "sourceMap": true
+  }
+}
